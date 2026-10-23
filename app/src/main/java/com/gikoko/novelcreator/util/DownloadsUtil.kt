@@ -13,23 +13,27 @@ import java.io.IOException
 object DownloadsUtil {
 
     fun saveText(ctx: Context, fileName: String, content: String): String {
+        return saveBytes(ctx, fileName, "text/plain", content.toByteArray(Charsets.UTF_8))
+    }
+
+    fun saveBytes(ctx: Context, fileName: String, mime: String, bytes: ByteArray): String {
         if (Build.VERSION.SDK_INT >= 29) {
             val values = ContentValues()
             values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            values.put(MediaStore.MediaColumns.MIME_TYPE, mime)
             values.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/GIKOKO NOVEL")
             val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IOException("Download folder တွင် မသိမ်းနိုင်ပါ")
             val out = ctx.contentResolver.openOutputStream(uri)
                 ?: throw IOException("Download folder တွင် မသိမ်းနိုင်ပါ")
-            out.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+            out.use { it.write(bytes) }
             return "Downloads/GIKOKO NOVEL/" + fileName
         } else {
             val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "GIKOKO NOVEL")
             if (!dir.exists()) dir.mkdirs()
             if (!dir.exists()) throw IOException("Download folder တွင် မသိမ်းနိုင်ပါ - SHARE ဖြင့် ထုတ်ပါ")
             val f = File(dir, fileName)
-            f.writeText(content)
+            f.writeBytes(bytes)
             return f.absolutePath
         }
     }

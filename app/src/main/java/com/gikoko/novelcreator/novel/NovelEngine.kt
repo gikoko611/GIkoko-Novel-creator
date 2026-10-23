@@ -14,9 +14,14 @@ object NovelEngine {
         return if (i >= 0) GENRES_MY[i] else genre
     }
 
-    fun outlinePrompt(idea: String, genre: String, chapters: Int, lenDesc: String): String {
+    private fun templateLine(template: String): String {
+        return if (template.isBlank()) "" else "စာရေးရမှုဟန် မှာကြားချက်: " + template + " "
+    }
+
+    fun outlinePrompt(idea: String, genre: String, chapters: Int, lenDesc: String, template: String = ""): String {
         val g = genreMy(genre)
         return "သင်သည် မြန်မာစာပေါင်းများစွာ ဖတ်ရှုခဲ့သော ကျွမ်းကျင်သည့် မြန်မာဝတ္ထုရေးဆရာကြီးတစ်ဦး ဖြစ်သည်။ " +
+            templateLine(template) +
             "အောက်ပါ ဇာတ်လမ်းအိုင်ဒီယာကို အခြေခံပြီး " + g + " အမျိုးအစား မြန်မာဝတ္ထုတစ်ပုဒ်အတွက် ဇာတ်လမ်းအကြဉ်း စီစဉ်ပေးပါ။ " +
             "အိုင်ဒီယာ: " + idea + " " +
             "ဇာတ်လမ်းကို အခန်း " + chapters + " ခန်းဖြင့် ရေးမည်ဖြစ်ပြီး တစ်ခန်းလျှင် " + lenDesc + " ရှိမည်။ " +
@@ -31,9 +36,10 @@ object NovelEngine {
             "Return STRICT JSON only: {\"title\":\"ခေါင်းစဉ်\"}"
     }
 
-    fun chapterPrompt(idea: String, genre: String, brief: String, chapterTitle: String, n: Int, total: Int, lenDesc: String, prevTail: String): String {
+    fun chapterPrompt(idea: String, genre: String, brief: String, chapterTitle: String, n: Int, total: Int, lenDesc: String, prevTail: String, template: String = ""): String {
         val g = genreMy(genre)
         return "သင်သည် ကျွမ်းကျင်သည့် မြန်မာဝတ္ထုရေးဆရာကြီး ဖြစ်သည်။ " +
+            templateLine(template) +
             "အောက်ပါ ဇာတ်လမ်းအိုင်ဒီယာအတွက် " + g + " အမျိုးအစား မြန်မာဝတ္ထုရဲ့ အခန်း " + n + " (စုစုပေါင်း " + total + " ခန်း) ကို ရေးပေးပါ။ " +
             "အိုင်ဒီယာ: " + idea + ". " +
             "ဒီအခန်းရဲ့ အကြဉ်း: " + brief + ". " +

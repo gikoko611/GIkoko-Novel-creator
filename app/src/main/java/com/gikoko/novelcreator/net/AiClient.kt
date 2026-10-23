@@ -2,6 +2,7 @@ package com.gikoko.novelcreator.net
 
 import android.content.Context
 import com.gikoko.novelcreator.Prefs
+import com.gikoko.novelcreator.novel.NovelEngine
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -177,6 +178,54 @@ object AiClient {
         if (key.isEmpty()) throw IOException("API key မထည့်ရသေးပါ")
         return if (Prefs.provider(ctx) == "gemini") testKeyGemini(key)
         else testKeyCustom(Prefs.baseUrl(ctx), key)
+    }
+
+    fun generateCover(ctx: Context, title: String, genre: String): ByteArray {
+        val provider = Prefs.provider(ctx)
+        if (provider != "gemini") throw IOException("Cover ဆွဲခြင်းက Gemini provider နဲ့ပဲ အလုပ်လုပ်ပါသည် - PROVIDER မှာ Gemini ရွေးပါ")
+        val key = Prefs.apiKey(ctx)
+        if (key.isEmpty()) throw IOException("API key မထည့်ရသေးပါ")
+        val g = NovelEngine.genreMy(genre)
+        val prompt = "မြန်မာဝတ္ထုတစ်ပုဒ်အတွက် novel cover art တစ်ပုံ ဆွဲပေးပါ။ " +
+            "ခေါင်းစဉ်: " + title + "။ အမျိုးအစား: " + g + "။ " +
+            "Cyberpunk 3D style၊ dramatic lighting၊ ရွှေရောင်နဲ့ အနက်ရောင်အသုံးများစေပါ။ ပုံထဲမှာ စာလုံး လုံးဝမရေးပါနဲ့။"
+        val models = arrayOf("gemini-3.1-flash-image", "gemini-2.5-flash-image", "gemini-3-pro-image")
+        var lastErr: IOException? = null
+        for (m in models) {
+            try {
+                return generateImageGemini(key, m, prompt)
+            } catch (e: IOException) {
+                lastErr = e
+            }
+        }
+        throw lastErr ?: IOException("Cover မဆွဲနိုင်ပါ")
+    }
+
+    private fun generateImageGemini(apiKey: String, model: String, prompt: String): ByteArray {
+        val body = JSONObject()
+            .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+            .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("TEXT").put("IMAGE")))
+        val req = Request.Builder()
+            .url(GEMINI_BASE + "/v1beta/models/" + model + ":generateContent?key=" + apiKey)
+            .post(body.toString().toRequestBody(JSON_MEDIA))
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string() ?: ""
+            if (!resp.isSuccessful) throw IOException("HTTP " + resp.code + ": " + txt.take(300))
+            val cands = JSONObject(txt).optJSONArray("candidates")
+            if (cands == null || cands.length() == 0) throw IOException("AI ကပုံ မပြန်ပါ")
+            val content = cands.getJSONObject(0).optJSONObject("content") ?: throw IOException("content မရှိပါ")
+            val parts = content.optJSONArray("parts") ?: throw IOException("parts မရှိပါ")
+            for (i in 0 until parts.length()) {
+                val o = parts.getJSONObject(i)
+                val inline = o.optJSONObject("inlineData") ?: continue
+                val b64 = inline.optString("data", "")
+                if (b64.isNotEmpty()) {
+                    return android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                }
+            }
+            throw IOException("AI က IMAGE mode နဲ့ မပြန်ပါ")
+        }
     }
 
     fun extractJson(raw: String): JSONObject {

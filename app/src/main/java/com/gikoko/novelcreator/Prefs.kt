@@ -2,6 +2,7 @@ package com.gikoko.novelcreator
 
 import android.content.Context
 import com.gikoko.novelcreator.net.AiClient
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -37,6 +38,31 @@ object Prefs {
 
     fun connStatus(ctx: Context): String = sp(ctx).getString("conn_status", "") ?: ""
     fun setConnStatus(ctx: Context, v: String) { sp(ctx).edit().putString("conn_status", v).apply() }
+
+    fun templates(ctx: Context): ArrayList<String> {
+        val out = ArrayList<String>()
+        return try {
+            val arr = JSONArray(sp(ctx).getString("prompt_templates", "[]"))
+            for (i in 0 until arr.length()) out.add(arr.optString(i))
+            out
+        } catch (e: Exception) {
+            out
+        }
+    }
+
+    fun addTemplate(ctx: Context, t: String) {
+        val list = templates(ctx)
+        list.add(t.trim())
+        sp(ctx).edit().putString("prompt_templates", JSONArray(list).toString()).apply()
+    }
+
+    fun removeTemplate(ctx: Context, idx: Int) {
+        val list = templates(ctx)
+        if (idx in list.indices) {
+            list.removeAt(idx)
+            sp(ctx).edit().putString("prompt_templates", JSONArray(list).toString()).apply()
+        }
+    }
 
     private fun usageJson(ctx: Context): JSONObject {
         return try {

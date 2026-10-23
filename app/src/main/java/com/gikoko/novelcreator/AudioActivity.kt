@@ -1,7 +1,10 @@
 package com.gikoko.novelcreator
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,16 +13,23 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.gikoko.novelcreator.net.EdgeTtsClient
 import com.gikoko.novelcreator.novel.NovelStore
+import com.gikoko.novelcreator.util.DualVoiceUtil
 import com.gikoko.novelcreator.util.DownloadsUtil
+import org.json.JSONObject
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import kotlin.concurrent.thread
 
 class AudioActivity : AppCompatActivity() {
 
     private var novelId = 0L
-    private lateinit var dir: java.io.File
+    private lateinit var dir: File
     private var count = 0
     private var current = 1
     private var speed = 1.0f
@@ -27,6 +37,8 @@ class AudioActivity : AppCompatActivity() {
 
     @Volatile
     private var genCancelled = false
+
+    private val failedChapters = ArrayList<Int>()
 
     private var mp: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -38,6 +50,12 @@ class AudioActivity : AppCompatActivity() {
     private lateinit var seekBar: SeekBar
     private lateinit var speedRow: LinearLayout
     private lateinit var sleepRow: LinearLayout
+    private lateinit var retryRow: LinearLayout
+    private lateinit var dualBtn: TextView
+
+    private val notifPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startBackground()
+    }
 
     private val seekUpdater = object : Runnable {
         override fun run() {
@@ -82,6 +100,20 @@ class AudioActivity : AppCompatActivity() {
         root.addView(genStatus)
 
         root.addView(Ui.goldBtn(this, "🎧 AUDIOBOOK ထုတ်မယ်") { generateAudio() })
+
+        val proCard = Ui.card(this, true)
+        proCard.addView(Ui.section(this, "PRO FEATURES"))
+        val dualRow = Ui.row(this)
+        dualBtn = Ui.chip(this, dualLabel(), dualEnabled()) { toggleDual() }
+        dualRow.addView(dualBtn)
+        proCard.addView(dualRow)
+        val proRow = Ui.row(this)
+        proRow.addView(Ui.chip(this, "🌙 BACKGROUND PLAYER", false) { startBackgroundChecked() })
+        proRow.addView(Ui.chip(this, "💾 FULL AUDIOBOOK တစ်ဖိုင်တည်း", false) { mergeAll() })
+        proCard.addView(proRow)
+        retryRow = Ui.row(this)
+        proCard.addView(retryRow)
+        root.addView(proCard)
 
         val playerCard = Ui.card(this, true)
         playerCard.addView(Ui.section(this, "PLAYER"))
@@ -135,12 +167,68 @@ class AudioActivity : AppCompatActivity() {
         root.addView(playerCard)
         refreshSpeedChips()
         refreshSleepChips()
+        refreshRetryRow()
         updateChapterLabel()
         handler.postDelayed(seekUpdater, 500)
     }
 
     private fun updateChapterLabel() {
         chapterLabel.text = if (count > 0) "အခန်း " + current + " / " + count else ""
+    }
+
+    private fun dualEnabled(): Boolean = NovelStore.meta(dir).optBoolean("dualVoice", false)
+
+    private fun dualLabel(): String {
+        return if (dualEnabled()) "🎚 အသံနှစ်မျိုး (ဇာတ်စကား) ON" else "🎚 အသံနှစ်မျိုး (ဇာတ်စကား) OFF"
+    }
+
+    private fun toggleDual() {
+        NovelStore.saveMeta(dir, JSONObject().put("dualVoice", !dualEnabled()))
+        dualBtn.text = dualLabel()
+        dualBtn.setTextColor(if (dualEnabled()) Ui.GOLD else Ui.DIM)
+        val msg = if (dualEnabled()) {
+            "ဇာတ်စကားတွေကို အသံနှစ်မျိုးနဲ့ ဖတ်ပါမယ် (အသံသွင်းပြီးတာတွေ အသစ်ပြန်ထုတ်မှ ပြောင်းမယ်)"
+        } else {
+            "အသံတစ်မျိုးတည်း ပြန်ဖတ်ပါမယ်"
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshRetryRow() {
+        retryRow.removeAllViews()
+        if (failedChapters.isNotEmpty()) {
+            retryRow.addView(Ui.chip(this, "🔄 RETRY - ပျက်တဲ့အခန်း " + failedChapters.size + " ခန်း", true) { retryFailed() })
+        }
+    }
+
+    private fun startBackgroundChecked() {
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startBackground()
+        }
+    }
+
+    private fun startBackground() {
+        if (count < 1) {
+            Toast.makeText(this, "ဝတ္ထုမှာ အခန်း မရှိသေးပါ", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val f = NovelStore.audioFile(dir, current)
+        if (!f.exists()) {
+            Toast.makeText(this, "အရင်ဆုံး AUDIOBOOK ထုတ်မယ် နှိပ်ပြီးမှ background ဖွင့်ပါ", Toast.LENGTH_SHORT).show()
+            return
+        }
+        PlaybackService.start(this, novelId, current)
+        Toast.makeText(this, "Background player ဖွင့်ပြီးပါပြီ - screen ပိတ်လည်း ဆက်ဖွင့်နေပါမယ်", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun synth(text: String, voice: String): ByteArray {
+        return if (dualEnabled()) {
+            DualVoiceUtil.synthesize(text, voice, DualVoiceUtil.altVoiceFor(voice), 1.0)
+        } else {
+            EdgeTtsClient.synthesizeMp3(text, voice, 1.0)
+        }
     }
 
     private fun refreshSpeedChips() {
@@ -186,8 +274,10 @@ class AudioActivity : AppCompatActivity() {
             return
         }
         genCancelled = false
+        failedChapters.clear()
+        refreshRetryRow()
         val voice = NovelStore.meta(dir).optString("voice", EdgeTtsClient.VOICE_MY_FEMALE)
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setMessage("Audiobook ထုတ်နေပါသည်...\nခဏစောင့်ပါ (တစ်ခန်းလျှင် ချက်ချင်းတွေ့ရမည်)")
             .setCancelable(false)
             .setNegativeButton("ရပ်တန့်") { _, _ -> genCancelled = true }
@@ -195,7 +285,7 @@ class AudioActivity : AppCompatActivity() {
         thread(start = true) {
             try {
                 for (n in 1..count) {
-                    if (genCancelled) throw IllegalStateException("ရပ်တန့်ခဲ့ပါသည်")
+                    if (genCancelled) break
                     val f = NovelStore.audioFile(dir, n)
                     if (f.exists()) {
                         runOnUiThread {
@@ -205,21 +295,139 @@ class AudioActivity : AppCompatActivity() {
                         continue
                     }
                     runOnUiThread { genStatus.text = "အခန်း " + n + " ကို အသံသွင်းနေပါသည်..." }
-                    val text = NovelStore.readChapter(dir, n)
-                    val mp3 = EdgeTtsClient.synthesizeMp3(text, voice, 1.0)
-                    f.parentFile?.mkdirs()
-                    f.writeBytes(mp3)
+                    try {
+                        val text = NovelStore.readChapter(dir, n)
+                        val mp3 = synth(text, voice)
+                        f.parentFile?.mkdirs()
+                        f.writeBytes(mp3)
+                    } catch (e: Exception) {
+                        DebugLog.log(this, "ch " + n + " synth error: " + (e.message ?: ""))
+                        failedChapters.add(n)
+                    }
                     runOnUiThread { progressView.setProgress(n * 100 / count) }
                 }
+                if (failedChapters.isNotEmpty() && !genCancelled) {
+                    runOnUiThread { genStatus.text = "ပျက်တဲ့အခန်းတွေ ပြန်ကြိုးစားနေပါသည်..." }
+                    val retry = ArrayList(failedChapters)
+                    failedChapters.clear()
+                    for (n in retry) {
+                        if (genCancelled) break
+                        try {
+                            val text = NovelStore.readChapter(dir, n)
+                            val mp3 = synth(text, voice)
+                            val f = NovelStore.audioFile(dir, n)
+                            f.parentFile?.mkdirs()
+                            f.writeBytes(mp3)
+                        } catch (e: Exception) {
+                            failedChapters.add(n)
+                        }
+                    }
+                }
+                val result = if (failedChapters.isEmpty()) {
+                    if (genCancelled) "ရပ်တန့်ခဲ့ပါသည်" else "Audiobook ပြီးပါပြီ ✓"
+                } else {
+                    "အခန်းတချို့ ပျက်နေသေးသည်: " + failedChapters.joinToString(", ")
+                }
                 runOnUiThread {
-                    genStatus.text = "Audiobook ပြီးပါပြီ ✓"
-                    Toast.makeText(this, "Audiobook ထုတ်ပြီးပါပြီ ✓", Toast.LENGTH_SHORT).show()
+                    genStatus.text = result
+                    refreshRetryRow()
+                    if (failedChapters.isEmpty()) Toast.makeText(this, result, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 DebugLog.log(this, "audiobook error: " + (e.message ?: ""))
-                runOnUiThread { genStatus.text = "ရပ်တန့်/အမှား: " + (e.message ?: "") }
+                runOnUiThread { genStatus.text = "အမှား: " + (e.message ?: "") }
             } finally {
                 runOnUiThread { dialog.dismiss() }
+            }
+        }
+    }
+
+    private fun retryFailed() {
+        if (failedChapters.isEmpty()) return
+        val list = ArrayList(failedChapters)
+        genCancelled = false
+        val voice = NovelStore.meta(dir).optString("voice", EdgeTtsClient.VOICE_MY_FEMALE)
+        val dialog = AlertDialog.Builder(this)
+            .setMessage("ပျက်တဲ့အခန်းတွေ ပြန်ကြိုးစားနေပါသည်...")
+            .setCancelable(false)
+            .setNegativeButton("ရပ်တန့်") { _, _ -> genCancelled = true }
+            .show()
+        thread(start = true) {
+            val stillFailed = ArrayList<Int>()
+            try {
+                for (n in list) {
+                    if (genCancelled) break
+                    runOnUiThread { genStatus.text = "အခန်း " + n + " ပြန်ကြိုးစားနေပါသည်..." }
+                    try {
+                        val text = NovelStore.readChapter(dir, n)
+                        val mp3 = synth(text, voice)
+                        val f = NovelStore.audioFile(dir, n)
+                        f.parentFile?.mkdirs()
+                        f.writeBytes(mp3)
+                    } catch (e: Exception) {
+                        DebugLog.log(this, "ch " + n + " retry error: " + (e.message ?: ""))
+                        stillFailed.add(n)
+                    }
+                }
+            } finally {
+                runOnUiThread { dialog.dismiss() }
+            }
+            failedChapters.clear()
+            failedChapters.addAll(stillFailed)
+            runOnUiThread {
+                genStatus.text = if (stillFailed.isEmpty()) {
+                    "ပြန်ကြိုးစားပြီးပါပြီ ✓"
+                } else {
+                    "နောက်တစ်ကြိမ်လည်း ပျက်နေသေး: " + stillFailed.joinToString(", ")
+                }
+                refreshRetryRow()
+            }
+        }
+    }
+
+    private fun mergeAll() {
+        if (count < 1) {
+            Toast.makeText(this, "ဝတ္ထုမှာ အခန်း မရှိသေးပါ", Toast.LENGTH_SHORT).show()
+            return
+        }
+        var missing = 0
+        for (n in 1..count) {
+            if (!NovelStore.audioFile(dir, n).exists()) missing++
+        }
+        if (missing > 0) {
+            Toast.makeText(this, "အခန်း " + missing + " ခုရဲ့ audio မရှိသေးပါ - အရင်ဆုံး AUDIOBOOK ထုတ်မယ် နှိပ်ပါ", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val title = NovelStore.meta(dir).optString("title", "novel")
+        genStatus.text = "Full audiobook စစ်ခွဲနေပါသည်..."
+        thread(start = true) {
+            try {
+                val merged = File(cacheDir, "full_audiobook.mp3")
+                FileOutputStream(merged).use { out ->
+                    for (n in 1..count) {
+                        val ch = NovelStore.audioFile(dir, n)
+                        FileInputStream(ch).use { it.copyTo(out, 65536) }
+                    }
+                }
+                val name = (title + " full audiobook.mp3").replace(" ", "_")
+                val path = DownloadsUtil.saveBytes(this, name, "audio/mpeg", merged.readBytes())
+                runOnUiThread {
+                    genStatus.text = "Full audiobook ပြီးပါပြီ ✓"
+                    AlertDialog.Builder(this)
+                        .setTitle("✓ FULL AUDIOBOOK")
+                        .setMessage("အခန်း " + count + " ခန်းကို MP3 တစ်ဖိုင်တည်း သိမ်းပြီးပါပြီ။\n" + path + "\n\nSHARE လုပ်မလား")
+                        .setPositiveButton("SHARE") { _, _ ->
+                            DownloadsUtil.shareFile(this, merged, "audio/mpeg")
+                        }
+                        .setNegativeButton("နောက်မှ", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                DebugLog.log(this, "merge error: " + (e.message ?: ""))
+                runOnUiThread {
+                    genStatus.text = "Full audiobook မအောင်မြင်ပါ"
+                    Toast.makeText(this, "အမှား: " + (e.message ?: ""), Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

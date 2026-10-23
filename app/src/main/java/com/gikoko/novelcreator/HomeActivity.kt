@@ -99,8 +99,12 @@ class HomeActivity : AppCompatActivity() {
             "AI နဲ့ မြန်မာဝတ္ထုဇာတ်လမ်းတွေ ရေးပြီး\n" +
             "မြန်မာအသံ audiobook အဖြစ် ထုတ်ပေးသည်။\n\n" +
             "• Custom Provider + Free models\n" +
-            "• Outline / Direct mode\n" +
-            "• Edge TTS မြန်မာအသံ\n" +
+            "• Outline / Direct mode + Prompt templates\n" +
+            "• AUTO ဆက်ရေး + Chapter tools\n" +
+            "• Edge TTS မြန်မာအသံ + အသံနှစ်မျိုး (ဇာတ်စကား)\n" +
+            "• Background player + Sleep timer\n" +
+            "• AI Cover + EPUB / PDF export\n" +
+            "• Full audiobook + Backup & Restore\n" +
             "• Cyber 3D + ရွှေပန်းကနုတ် theme\n\n" +
             "POWERED BY I KO KO"
         AlertDialog.Builder(this)

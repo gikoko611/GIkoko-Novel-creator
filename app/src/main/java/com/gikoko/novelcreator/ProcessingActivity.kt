@@ -27,6 +27,7 @@ class ProcessingActivity : AppCompatActivity() {
     private var chapters = 5
     private var lenDesc = ""
     private var voice = ""
+    private var template = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +41,7 @@ class ProcessingActivity : AppCompatActivity() {
         val lenIdx = intent.getIntExtra("lenIdx", 1)
         lenDesc = NovelEngine.LENGTH_PARAS[if (lenIdx in NovelEngine.LENGTH_PARAS.indices) lenIdx else 1]
         voice = intent.getStringExtra("voice") ?: "my-MM-NilarNeural"
+        template = intent.getStringExtra("template") ?: ""
 
         val header = Ui.title(this, "🚀 ဝတ္ထု ရေးနေပါပြီ...")
         root.addView(header)
@@ -78,7 +80,7 @@ class ProcessingActivity : AppCompatActivity() {
             var title = ""
             var outline: JSONObject? = null
             if (mode == "outline") {
-                val raw = AiClient.generate(this, NovelEngine.outlinePrompt(idea, genre, chapters, lenDesc), true)
+                val raw = AiClient.generate(this, NovelEngine.outlinePrompt(idea, genre, chapters, lenDesc, template), true)
                 Prefs.addUsage(this)
                 outline = AiClient.extractJson(raw)
                 title = outline.optString("title", "")
@@ -92,6 +94,7 @@ class ProcessingActivity : AppCompatActivity() {
 
             val id = NovelStore.create(this, title, genre, mode, voice)
             val dir = NovelStore.dir(this, id)
+            NovelStore.saveMeta(dir, JSONObject().put("template", template))
             if (outline != null) NovelStore.saveOutline(dir, outline)
             val chaptersJson = outline?.optJSONArray("chapters")
 
@@ -108,7 +111,7 @@ class ProcessingActivity : AppCompatActivity() {
                     chTitle = o.optString("title", chTitle)
                 }
                 ui { statusTv.text = "အခန်း " + n + " / " + chapters + " ရေးနေပါသည်...\n(" + chTitle + ")" }
-                val raw = AiClient.generate(this, NovelEngine.chapterPrompt(idea, genre, brief, chTitle, n, chapters, lenDesc, prevTail), false)
+                val raw = AiClient.generate(this, NovelEngine.chapterPrompt(idea, genre, brief, chTitle, n, chapters, lenDesc, prevTail, template), false)
                 Prefs.addUsage(this)
                 val text = NovelEngine.cleanText(raw)
                 NovelStore.saveChapter(dir, n, text)
