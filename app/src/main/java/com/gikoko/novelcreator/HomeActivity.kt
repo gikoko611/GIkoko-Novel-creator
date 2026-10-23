@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.gikoko.novelcreator.novel.NovelStore
-import com.gikoko.novelcreator.novel.NovelMeta
 
 class HomeActivity : AppCompatActivity() {
 
@@ -49,18 +48,16 @@ class HomeActivity : AppCompatActivity() {
         root.addView(KanoteDividerView(this), LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 14f)))
 
-        librarySub = TextView(this)
-        providerSub = TextView(this)
+        val libCard = Ui.menuCard(this, "📚", "LIBRARY", "") { openLibrary() }
+        root.addView(libCard)
+        librarySub = libCard.findViewWithTag<TextView>("sub")
+        val provCard = Ui.menuCard(this, "🔑", "AI PROVIDER & KEY", "") { startActivity(Intent(this, ProviderActivity::class.java)) }
+        root.addView(provCard)
+        providerSub = provCard.findViewWithTag<TextView>("sub")
 
         root.addView(Ui.menuCard(this, "✍️", "NOVEL STUDIO", "AI နဲ့ ဝတ္ထုအသစ် ရေးမယ်") {
             startActivity(Intent(this, StudioActivity::class.java))
         })
-        val libCard = Ui.menuCard(this, "📚", "LIBRARY", "", {}) { openLibrary() }
-        librarySub = libCard.findViewWithTag<TextView>("sub")
-        root.addView(libCard)
-        val provCard = Ui.menuCard(this, "🔑", "AI PROVIDER & KEY", "", {}) { startActivity(Intent(this, ProviderActivity::class.java)) }
-        providerSub = provCard.findViewWithTag<TextView>("sub")
-        root.addView(provCard)
         root.addView(Ui.menuCard(this, "🔊", "AUDIOBOOK STUDIO", "နောက်ဆုံး ဝတ္ထုကို audiobook ထုတ်မယ်") { openAudioLatest() })
         root.addView(Ui.menuCard(this, "📊", "USAGE TRACKER", "7 ရက် AI သုံးစွဲမှု") {
             startActivity(Intent(this, UsageActivity::class.java))
@@ -70,12 +67,16 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (!::librarySub.isInitialized) return
         val count = NovelStore.list(this).size
         librarySub.text = "ဝတ္ထု " + count + " ပုဒ် သိမ်းထားပါသည်"
         val status = Prefs.connStatus(this)
         val model = Prefs.model(this)
         val provider = Prefs.provider(this)
-        providerSub.text = provider.uppercase() + if (model.isNotEmpty()) " • " + model else "" + if (status.isNotEmpty()) " • " + status else ""
+        val sb = StringBuilder(provider.uppercase())
+        if (model.isNotEmpty()) sb.append(" • ").append(model)
+        if (status.isNotEmpty()) sb.append(" • ").append(status)
+        providerSub.text = sb.toString()
     }
 
     private fun openLibrary() {

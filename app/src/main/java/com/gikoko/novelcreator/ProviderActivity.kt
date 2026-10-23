@@ -2,7 +2,6 @@ package com.gikoko.novelcreator
 
 import android.os.Bundle
 import android.text.InputType
-import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -41,6 +40,7 @@ class ProviderActivity : AppCompatActivity() {
         urlCard.addView(Ui.section(this, "BASE URL"))
         baseUrlInput = Ui.input(this, "https://openrouter.ai/api/v1", Prefs.baseUrl(this), false)
         urlCard.addView(baseUrlInput)
+        urlCard.addView(Ui.label(this, "Gemini မှာ BASE URL မလိုပါ"))
         root.addView(urlCard)
 
         val keyCard = Ui.card(this)
@@ -90,7 +90,6 @@ class ProviderActivity : AppCompatActivity() {
         } else {
             modelInput.setText("")
         }
-        Prefs.setModel(this, modelInput.text.toString())
         refreshProviderChips()
     }
 
@@ -165,7 +164,7 @@ class ProviderActivity : AppCompatActivity() {
                 Prefs.setConnStatus(this, "✖ ချိတ်ဆက်မှု မအောင်မြင်")
                 runOnUiThread {
                     dialog.dismiss()
-                    statusTv.text = "✖ ချိတ်ဆ连接မှု မအောင်မြင်"
+                    statusTv.text = "✖ ချိတ်ဆက်မှု မအောင်မြင်"
                     AlertDialog.Builder(this)
                         .setTitle("✖ မအောင်မြင်ပါ")
                         .setMessage(e.message ?: "")

@@ -157,6 +157,7 @@ object Ui {
         tv.typeface = Typeface.DEFAULT_BOLD
         tv.setTextColor(GOLD)
         val subTv = TextView(ctx)
+        subTv.tag = "sub"
         subTv.text = sub
         subTv.textSize = 12f
         subTv.setTextColor(DIM)
