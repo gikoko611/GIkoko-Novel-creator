@@ -53,7 +53,7 @@ object Ui {
         tv.text = text
         tv.textSize = 15f
         tv.setTextColor(TEXT)
-        tv.lineSpacing = dp(ctx, 4f).toFloat(), 1f
+        tv.setLineSpacing(dp(ctx, 4f).toFloat(), 1f)
         return tv
     }
 
@@ -63,6 +63,16 @@ object Ui {
         tv.textSize = 13f
         tv.setTextColor(GOLD_LIGHT)
         tv.gravity = Gravity.CENTER
+        return tv
+    }
+
+    fun backBtn(ctx: Context, onClick: (View) -> Unit): TextView {
+        val tv = TextView(ctx)
+        tv.text = "◀ BACK"
+        tv.textSize = 14f
+        tv.typeface = Typeface.DEFAULT_BOLD
+        tv.setTextColor(GOLD)
+        tv.setOnClickListener(onClick)
         return tv
     }
 
@@ -154,8 +164,9 @@ object Ui {
         mid.orientation = LinearLayout.VERTICAL
         mid.addView(tv)
         mid.addView(subTv)
-        mid.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        (mid.layoutParams as LinearLayout.LayoutParams).leftMargin = dp(ctx, 14)
+        val midLp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        midLp.leftMargin = dp(ctx, 14)
+        mid.layoutParams = midLp
         row.addView(iconTv)
         row.addView(mid)
         c.addView(row)
