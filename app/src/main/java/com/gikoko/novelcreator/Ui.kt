@@ -21,6 +21,8 @@ object Ui {
 
     fun dp(ctx: Context, v: Float): Int = Math.round(ctx.resources.displayMetrics.density * v)
 
+    fun dp(ctx: Context, v: Int): Int = dp(ctx, v.toFloat())
+
     fun title(ctx: Context, text: String): TextView {
         val tv = TextView(ctx)
         tv.text = text

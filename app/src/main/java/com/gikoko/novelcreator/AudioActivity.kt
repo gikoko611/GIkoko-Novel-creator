@@ -165,7 +165,7 @@ class AudioActivity : AppCompatActivity() {
         speed = v
         val m = mp
         if (m != null) {
-            m.playbackParams = m.playbackParams.setPlaybackSpeed(speed)
+            m.playbackParams = m.playbackParams.setSpeed(speed)
         }
         refreshSpeedChips()
     }
@@ -254,7 +254,7 @@ class AudioActivity : AppCompatActivity() {
             mp?.setOnCompletionListener {
                 if (current + 1 <= count) playChapter(current + 1) else stopPlayer()
             }
-            mp?.playbackParams = mp!!.playbackParams.setPlaybackSpeed(speed)
+            mp?.playbackParams = mp!!.playbackParams.setSpeed(speed)
             mp?.start()
             current = n
             updateChapterLabel()
