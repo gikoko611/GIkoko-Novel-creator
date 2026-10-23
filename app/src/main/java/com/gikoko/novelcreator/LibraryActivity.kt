@@ -112,7 +112,7 @@ class LibraryActivity : AppCompatActivity() {
         card.addView(Ui.section(this, "BACKUP & RESTORE"))
         val row = Ui.row(this)
         row.addView(Ui.chip(this, "💾 BACKUP", false) { doBackup() })
-        row.addView(Ui.chip(this, "📂 RESTORE", false) { openBackup.launch(arrayOf("application/zip")) }))
+        row.addView(Ui.chip(this, "📂 RESTORE", false) { openBackup.launch(arrayOf("application/zip")) })
         card.addView(row)
         card.addView(Ui.label(this, "ဝတ္ထုအားလုံးကို ZIP file အဖြစ် Download folder မှာ သိမ်း/ပြန်ထည့်နိုင်ပါသည်"))
         root.addView(card)
