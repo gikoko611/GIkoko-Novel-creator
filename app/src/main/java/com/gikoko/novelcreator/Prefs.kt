@@ -27,7 +27,7 @@ object Prefs {
     fun setApiKey(ctx: Context, v: String) { sp(ctx).edit().putString("api_key", v).apply() }
 
     fun model(ctx: Context): String {
-        val def = if (provider(ctx) == "gemini") "gemini-2.0-flash" else ""
+        val def = if (provider(ctx) == "gemini") "gemini-3.8-flash" else ""
         return sp(ctx).getString("model", def) ?: def
     }
     fun setModel(ctx: Context, v: String) { sp(ctx).edit().putString("model", v).apply() }

@@ -60,6 +60,33 @@ object AiClient {
         }
     }
 
+    fun listGeminiModels(apiKey: String): ArrayList<String> {
+        val req = Request.Builder().url(GEMINI_BASE + "/v1beta/models?key=" + apiKey).get().build()
+        client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string() ?: ""
+            if (!resp.isSuccessful) throw IOException("HTTP " + resp.code + ": " + txt.take(600))
+            val arr = JSONObject(txt).optJSONArray("models") ?: JSONArray()
+            val out = ArrayList<String>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val name = o.optString("name", "")
+                val id = if (name.startsWith("models/")) name.substring("models/".length) else name
+                if (id.isEmpty()) continue
+                val methods = o.optJSONArray("supportedGenerationMethods")
+                var supported = false
+                if (methods != null) {
+                    for (j in 0 until methods.length()) {
+                        if (methods.optString(j) == "generateContent") supported = true
+                    }
+                }
+                if (supported) out.add(id)
+            }
+            if (out.isEmpty()) throw IOException("Gemini model တစ်ခုမှ မတွေ့ပါ")
+            out.sort()
+            return out
+        }
+    }
+
     fun listCustomModels(baseUrl: String, apiKey: String): ArrayList<String> {
         val builder = Request.Builder().url(normalizeBase(baseUrl) + "/models").get()
         if (apiKey.isNotEmpty()) builder.header("Authorization", "Bearer " + apiKey)

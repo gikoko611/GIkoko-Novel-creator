@@ -86,7 +86,7 @@ class ProviderActivity : AppCompatActivity() {
         Prefs.setProvider(this, provider)
         baseUrlInput.setText(AiClient.defaultBase(provider))
         if (provider == "gemini") {
-            modelInput.setText("gemini-2.0-flash")
+            modelInput.setText("gemini-3.8-flash")
         } else {
             modelInput.setText("")
         }
@@ -111,7 +111,7 @@ class ProviderActivity : AppCompatActivity() {
             .show()
         thread(start = true) {
             try {
-                val models = AiClient.listCustomModels(url, key)
+                val models = if (provider == "gemini") AiClient.listGeminiModels(key) else AiClient.listCustomModels(url, key)
                 runOnUiThread {
                     dialog.dismiss()
                     val arr = models.toTypedArray()
