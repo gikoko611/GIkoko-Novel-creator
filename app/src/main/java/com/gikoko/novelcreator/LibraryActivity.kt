@@ -47,7 +47,7 @@ class LibraryActivity : AppCompatActivity() {
             title.typeface = android.graphics.Typeface.DEFAULT_BOLD
             title.setTextColor(Ui.GOLD)
             card.addView(title)
-            val sub = Ui.label(this, n.genre + " • " + if (n.mode == "outline") "OUTLINE" else "DIRECT" + " • အခန်း " + n.chapterCount + " ခန်း • " + n.created)
+            val sub = Ui.label(this, n.genre + " • " + (if (n.mode == "outline") "OUTLINE" else "DIRECT") + " • အခန်း " + n.chapterCount + " ခန်း • " + n.created)
             sub.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             card.addView(sub)
             card.setOnClickListener {

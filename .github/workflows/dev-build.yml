@@ -36,7 +36,7 @@ jobs:
         if: failure()
         shell: bash
         env:
-          GH_TOKEN: ${ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           {
             echo "# Dev build failed - debug log"

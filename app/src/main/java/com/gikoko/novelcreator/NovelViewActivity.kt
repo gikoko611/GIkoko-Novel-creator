@@ -50,7 +50,7 @@ class NovelViewActivity : AppCompatActivity() {
         count = meta.optInt("chapterCount", 0)
         current = if (count > 0) 1 else 0
 
-        val sub = Ui.label(this, genre + " • " + if (mode == "outline") "OUTLINE MODE" else "DIRECT MODE" + " • အခန်း " + count + " ခန်း")
+        val sub = Ui.label(this, genre + " • " + (if (mode == "outline") "OUTLINE MODE" else "DIRECT MODE") + " • အခန်း " + count + " ခန်း")
         root.addView(sub)
 
         val navCard = Ui.card(this)
